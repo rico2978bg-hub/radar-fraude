@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1b4d">
+<title>Radar de Fraude · IA que detecta pagamentos suspeitos</title>
+<meta name="description" content="Uma IA que aprende a identificar pagamentos suspeitos, treinada no próprio navegador.">
+<link rel="icon" href="https://cdn.jsdelivr.net/npm/@lobehub/fluent-emoji-3d@1.1.0/assets/1f6e1-fe0f.webp">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --navy: #0f1b4d; --navy-2: #1d2f80; --roxo: #6d5cf5; --roxo-s: #eeebff;
+    --verde: #16a34a; --verde-s: #e3f7ea; --ambar: #d97706; --ambar-s: #fff3dc; --vermelho: #e11d48; --vermelho-s: #ffe4ea;
+    --ink: #151a33; --muted: #646b85; --line: #e7e9f2; --bg: #f3f4fa; --card: #fff;
+    --shadow: 0 1px 2px rgba(21, 26, 51, .04), 0 10px 28px rgba(21, 26, 51, .08);
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; color: var(--ink); background: var(--bg); font: 15px/1.55 "Poppins", system-ui, -apple-system, "Segoe UI", sans-serif; }
+  button, input, select { font: inherit; color: inherit; }
+  .ic { display: inline-block; vertical-align: middle; object-fit: contain; }
+  .ic-txt { display: inline-grid; place-items: center; vertical-align: middle; line-height: 1; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 18px; }
+
+  /* Topo */
+  .hero { position: relative; overflow: hidden; color: #fff; background: radial-gradient(900px 500px at 85% 40%, #3b2fa8 0, transparent 60%), linear-gradient(150deg, var(--navy), #13236a 60%, #0b1338); }
+  .hero .wrap { display: grid; grid-template-columns: 1.15fr .85fr; gap: 30px; align-items: center; padding-block: 56px 64px; }
+  .selo { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 99px; background: #ffffff1c; font-size: .8rem; font-weight: 600; }
+  .hero h1 { margin: 16px 0 10px; font-size: clamp(2.2rem, 6vw, 3.6rem); line-height: 1.02; letter-spacing: -.04em; font-weight: 800; }
+  .hero h1 span { background: linear-gradient(90deg, #7dd3fc, #a78bfa); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { margin: 0; max-width: 520px; font-size: 1.08rem; color: #d6dcff; }
+  .acoes { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 13px 22px; border: 0; border-radius: 14px; font-weight: 700; cursor: pointer; text-decoration: none; transition: transform .15s, filter .15s; }
+  .btn:hover { transform: translateY(-2px); }
+  .btn:disabled { opacity: .6; cursor: wait; transform: none; }
+  .btn-luz { background: #fff; color: var(--navy); box-shadow: 0 14px 30px -14px #000; }
+  .btn-vidro { background: #ffffff1f; color: #fff; }
+  .btn-roxo { background: linear-gradient(135deg, #8b7bff, var(--roxo)); color: #fff; box-shadow: 0 12px 24px -12px var(--roxo); }
+  .btn-claro { background: var(--roxo-s); color: var(--roxo); }
+  .numeros { display: flex; gap: 22px; margin-top: 30px; flex-wrap: wrap; }
+  .numeros b { display: block; font-size: 1.5rem; font-weight: 800; }
+  .numeros small { color: #aeb8f0; font-size: .78rem; }
+
+  .radar { position: relative; width: min(340px, 80vw); aspect-ratio: 1; margin: 0 auto; border-radius: 50%;
+           background: repeating-radial-gradient(circle, #ffffff10 0 1px, transparent 1px 34px), radial-gradient(circle, #1e3a8a55, #0b133800 70%);
+           border: 1px solid #ffffff22; }
+  .radar::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+                   background: conic-gradient(from 0deg, #7dd3fc55, transparent 22%); animation: gira 3.2s linear infinite; }
+  .radar::after { content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #ffffff18; box-shadow: 0 0 0 0 transparent; }
+  @keyframes gira { to { transform: rotate(1turn); } }
+  .ponto { position: absolute; width: 12px; height: 12px; margin: -6px; border-radius: 50%; animation: pisca 3.2s infinite; }
+  .ponto.ok { background: #4ade80; box-shadow: 0 0 12px #4ade80; }
+  .ponto.mal { background: #fb7185; box-shadow: 0 0 14px #fb7185; }
+  @keyframes pisca { 0%, 100% { opacity: .25; transform: scale(.8); } 15% { opacity: 1; transform: scale(1.25); } }
+  .radar .centro { position: absolute; inset: 0; display: grid; place-items: center; }
+
+  /* Seções */
+  section { padding: 54px 0 0; }
+  .passo { display: inline-block; padding: 4px 12px; border-radius: 99px; background: var(--roxo-s); color: var(--roxo); font-size: .78rem; font-weight: 700; }
+  h2 { margin: 10px 0 6px; font-size: clamp(1.5rem, 3.6vw, 2.1rem); letter-spacing: -.03em; line-height: 1.15; }
+  .intro { margin: 0 0 22px; max-width: 720px; color: var(--muted); }
+  .card { padding: 20px; border-radius: 22px; background: var(--card); box-shadow: var(--shadow); }
+  .card h3 { margin: 0 0 12px; font-size: 1rem; }
+  .grade-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .grade-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .como .card { display: flex; flex-direction: column; gap: 6px; }
+  .como .card b { font-size: 1rem; }
+  .como .card span { color: var(--muted); font-size: .88rem; }
+  .como .num { color: var(--roxo); font-weight: 800; font-size: .8rem; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+  .tile { padding: 14px 16px; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); }
+  .tile small { display: block; color: var(--muted); font-size: .76rem; font-weight: 600; }
+  .tile b { font-size: 1.45rem; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .tile.verde b { color: var(--verde); } .tile.vermelho b { color: var(--vermelho); } .tile.ambar b { color: var(--ambar); } .tile.roxo b { color: var(--roxo); }
+  .tile em { display: block; font-style: normal; color: var(--muted); font-size: .74rem; }
+
+  .tabela-wrap { overflow-x: auto; border-radius: 18px; background: var(--card); box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: .85rem; min-width: 640px; }
+  th { text-align: left; padding: 12px 14px; color: var(--muted); font-size: .74rem; font-weight: 600; border-bottom: 1px solid var(--line); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tr:last-child td { border-bottom: 0; }
+  .chip { display: inline-block; margin: 2px 4px 2px 0; padding: 2px 8px; border-radius: 99px; background: #f1f2f8; color: #4b5170; font-size: .7rem; font-weight: 600; white-space: nowrap; }
+  .chip.alerta { background: var(--ambar-s); color: #9a5b00; }
+  .rotulo { display: inline-block; padding: 3px 10px; border-radius: 99px; font-size: .74rem; font-weight: 700; }
+  .rotulo.ok { background: var(--verde-s); color: var(--verde); }
+  .rotulo.fraude { background: var(--vermelho-s); color: var(--vermelho); }
+  .barra-acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 14px; }
+  .barra-acoes small { color: var(--muted); }
+
+  .treino { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: stretch; }
+  .treino .card p { margin: 0 0 14px; color: var(--muted); font-size: .9rem; }
+  .progresso { height: 10px; margin: 6px 0 4px; border-radius: 99px; background: var(--line); overflow: hidden; }
+  .progresso span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #8b7bff, var(--roxo)); }
+  .grafico svg { width: 100%; height: auto; display: block; }
+  .legenda-graf { display: flex; justify-content: space-between; color: var(--muted); font-size: .74rem; margin-top: 4px; }
+
+  .bloqueado { position: relative; }
+  .bloqueado.vazio > :not(.aviso-vazio) { filter: blur(3px); opacity: .45; pointer-events: none; user-select: none; }
+  .aviso-vazio { display: none; }
+  .bloqueado.vazio .aviso-vazio { position: absolute; inset: 0; z-index: 2; display: grid; place-content: center; justify-items: center; gap: 10px; text-align: center; font-weight: 600; }
+
+  .rigor { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-bottom: 16px; padding: 16px 20px; border-radius: 20px; background: var(--card); box-shadow: var(--shadow); }
+  .rigor label { font-weight: 700; }
+  .rigor input { flex: 1; min-width: 180px; accent-color: var(--roxo); }
+  .rigor output { min-width: 52px; padding: 4px 10px; border-radius: 10px; background: var(--roxo-s); color: var(--roxo); font-weight: 800; text-align: center; }
+  .rigor small { flex-basis: 100%; color: var(--muted); }
+
+  .matriz { display: grid; grid-template-columns: auto 1fr 1fr; gap: 8px; font-size: .82rem; }
+  .matriz .cab { color: var(--muted); font-weight: 600; text-align: center; align-self: end; font-size: .74rem; }
+  .matriz .lado { color: var(--muted); font-weight: 600; font-size: .74rem; align-self: center; text-align: right; }
+  .celula { padding: 14px 8px; border-radius: 16px; text-align: center; }
+  .celula b { display: block; font-size: 1.5rem; font-weight: 800; }
+  .celula span { font-size: .72rem; font-weight: 600; }
+  .celula.bom { background: var(--verde-s); color: #0f7a37; }
+  .celula.ruim { background: var(--vermelho-s); color: #b3123a; }
+  .celula.meh { background: var(--ambar-s); color: #9a5b00; }
+
+  .pesos { display: grid; gap: 7px; }
+  .peso { display: grid; grid-template-columns: minmax(130px, 1.1fr) 1fr; gap: 10px; align-items: center; font-size: .8rem; }
+  .eixo { position: relative; height: 14px; }
+  .eixo::before { content: ""; position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: #cfd3e3; }
+  .eixo span { position: absolute; top: 0; height: 100%; border-radius: 6px; }
+  .eixo .mais { left: 50%; background: linear-gradient(90deg, #fda4af, var(--vermelho)); }
+  .eixo .menos { right: 50%; background: linear-gradient(270deg, #86efac, var(--verde)); }
+  .nota { margin-top: 16px; padding: 16px 18px; border-radius: 18px; background: linear-gradient(135deg, #fff8e6, #ffeec2); font-size: .9rem; }
+  .nota b { display: block; margin-bottom: 2px; }
+
+  /* Simulador */
+  .simulador { display: grid; grid-template-columns: 1.1fr .9fr; gap: 16px; align-items: start; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .presets button { padding: 8px 14px; border: 1.5px solid var(--line); border-radius: 99px; background: #fff; font-weight: 600; font-size: .84rem; cursor: pointer; }
+  .presets button:hover { border-color: var(--roxo); color: var(--roxo); }
+  .campos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .campo span { display: block; margin: 0 0 5px 2px; color: var(--muted); font-size: .76rem; font-weight: 600; }
+  .campo input, .campo select { width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: #f8f9fd; outline: none; }
+  .campo input:focus, .campo select:focus { border-color: var(--roxo); background: #fff; }
+  .campo input[type=range] { padding: 0; accent-color: var(--roxo); background: none; border: 0; }
+  .toggles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 14px; }
+  .toggle { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 14px; background: #f6f7fc; font-size: .82rem; font-weight: 600; cursor: pointer; }
+  .toggle input { width: 18px; height: 18px; accent-color: var(--vermelho); }
+  .veredito { text-align: center; }
+  .medidor { position: relative; width: 190px; aspect-ratio: 1; margin: 4px auto 12px; border-radius: 50%; display: grid; place-content: center; transition: background .4s; }
+  .medidor::before { content: ""; position: absolute; inset: 16px; border-radius: 50%; background: #fff; }
+  .medidor div { position: relative; }
+  .medidor b { display: block; font-size: 2.6rem; font-weight: 800; letter-spacing: -.04em; line-height: 1; }
+  .medidor small { color: var(--muted); font-weight: 600; }
+  .decisao { display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px; border-radius: 99px; font-weight: 800; font-size: 1.05rem; }
+  .decisao.aprovar { background: var(--verde-s); color: var(--verde); }
+  .decisao.revisar { background: var(--ambar-s); color: var(--ambar); }
+  .decisao.bloquear { background: var(--vermelho-s); color: var(--vermelho); }
+  .motivos { list-style: none; margin: 16px 0 0; padding: 0; text-align: left; display: grid; gap: 8px; }
+  .motivos li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 9px 12px; border-radius: 12px; background: #f6f7fc; font-size: .82rem; }
+  .motivos .seta { font-weight: 800; }
+  .motivos .sobe { color: var(--vermelho); } .motivos .desce { color: var(--verde); }
+  .motivos small { color: var(--muted); }
+
+  footer { margin-top: 64px; padding: 34px 0 calc(40px + env(safe-area-inset-bottom)); background: #0b1338; color: #aeb8f0; font-size: .86rem; }
+  footer a { color: #fff; font-weight: 600; }
+  footer p { margin: 4px 0; }
+
+  @media (max-width: 860px) {
+    .hero .wrap, .treino, .simulador, .grade-2 { grid-template-columns: 1fr; }
+    .grade-4, .tiles { grid-template-columns: 1fr 1fr; }
+    .radar { width: min(260px, 70vw); }
+  }
+  @media (max-width: 420px) { .campos, .toggles { grid-template-columns: 1fr; } .tile b { font-size: 1.2rem; } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div>
+      <span class="selo"><i data-e="🧠" data-s="18"></i> Projeto de IA · Pagamentos</span>
+      <h1>Radar de <span>Fraude</span></h1>
+      <p>Uma IA que aprende a identificar pagamentos suspeitos, treinada aqui mesmo, no seu navegador. Veja ela aprender, meça o resultado e teste uma compra.</p>
+      <div class="acoes">
+        <button class="btn btn-luz" id="btn-hero" type="button">▶ Treinar a IA agora</button>
+        <a class="btn btn-vidro" href="https://github.com/rico2978bg-hub/radar-fraude">Ver o código</a>
+      </div>
+      <div class="numeros">
+        <div><b>10.000</b><small>transações de exemplo</small></div>
+        <div><b>14</b><small>sinais analisados</small></div>
+        <div><b>0</b><small>servidores ou APIs pagas</small></div>
+      </div>
+    </div>
+    <div class="radar" aria-hidden="true" id="radar">
+      <div class="centro"><i data-e="🛡️" data-s="86"></i></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="como">
+    <span class="passo">Como funciona</span>
+    <h2>Da compra à decisão, em 4 passos</h2>
+    <p class="intro">Toda compra online passa por uma análise de risco antes de ser aprovada. Aqui você vê, por dentro, como uma IA simples faz isso.</p>
+    <div class="grade-4">
+      <div class="card"><i data-e="💳" data-s="40"></i><span class="num">01</span><b>Dados</b><span>10 mil compras de exemplo, cada uma com 14 sinais (valor, horário, idade da conta…) e a resposta: era fraude ou não.</span></div>
+      <div class="card"><i data-e="🧠" data-s="40"></i><span class="num">02</span><b>Treino</b><span>A IA olha 75% das compras e ajusta, aos poucos, quanto cada sinal pesa no risco.</span></div>
+      <div class="card"><i data-e="📊" data-s="40"></i><span class="num">03</span><b>Avaliação</b><span>Testamos nos outros 25%, compras que ela nunca viu, para saber se aprendeu de verdade.</span></div>
+      <div class="card"><i data-e="🛡️" data-s="40"></i><span class="num">04</span><b>Decisão</b><span>Para cada nova compra: aprovar, mandar para revisão ou bloquear, explicando o porquê.</span></div>
+    </div>
+  </section>
+
+  <section id="dados">
+    <span class="passo">Passo 1 · Os dados</span>
+    <h2>10 mil compras para a IA estudar</h2>
+    <p class="intro">Os dados são simulados, mas seguem padrões reais de fraude: conta recém-criada, cartão testado várias vezes, IP de outro país, e-mail descartável… A IA <b>não sabe</b> dessas regras: ela precisa descobrir sozinha olhando os exemplos.</p>
+    <div class="tiles" id="tiles-dados"></div>
+    <div class="tabela-wrap"><table><thead><tr><th>#</th><th>Valor</th><th>Categoria</th><th>Horário</th><th>Sinais</th><th>Resposta</th></tr></thead><tbody id="amostra"></tbody></table></div>
+    <div class="barra-acoes"><button class="btn btn-claro" id="btn-dados" type="button">🎲 Gerar outras 10 mil</button><small>Gerar dados novos zera a IA, e você treina de novo.</small></div>
+  </section>
+
+  <section id="treino">
+    <span class="passo">Passo 2 · O treino</span>
+    <h2>Veja a IA aprendendo</h2>
+    <p class="intro">O modelo é uma <b>regressão logística</b>, escrita do zero em JavaScript. A cada rodada ele compara o que previu com a resposta certa e corrige os pesos. A linha abaixo é o erro: quando ela cai, a IA está aprendendo.</p>
+    <div class="treino">
+      <div class="card">
+        <h3>Treinamento</h3>
+        <p>300 rodadas sobre 7.500 compras. Como fraude é rara (~4%), cada fraude pesa mais no erro. Senão a IA aprenderia a dizer "nunca é fraude".</p>
+        <button class="btn btn-roxo" id="btn-treinar" type="button">▶ Treinar</button>
+        <div class="progresso" style="margin-top:16px"><span id="barra-treino"></span></div>
+        <small id="status-treino" style="color:var(--muted)">Ainda não treinada.</small>
+      </div>
+      <div class="card grafico">
+        <h3>Erro durante o treino</h3>
+        <svg id="graf-perda" viewBox="0 0 600 200" role="img" aria-label="Gráfico do erro caindo durante o treino"></svg>
+        <div class="legenda-graf"><span>rodada 1</span><span>rodada 300</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="resultado">
+    <span class="passo">Passo 3 · O resultado</span>
+    <h2>Ela aprendeu? Testando com compras que nunca viu</h2>
+    <p class="intro">Bloquear tudo pegaria toda fraude, mas espantaria os clientes. Aprovar tudo deixaria a fraude passar. Arraste o <b>rigor</b> e veja essa troca acontecer.</p>
+    <div class="bloqueado vazio" id="bloco-resultado">
+      <div class="aviso-vazio"><i data-e="🔒" data-s="48"></i>Treine a IA no passo 2 para ver o resultado.<button class="btn btn-roxo" data-treinar type="button">▶ Treinar agora</button></div>
+      <div class="rigor">
+        <label for="limiar">Rigor do bloqueio</label>
+        <input id="limiar" type="range" min="5" max="95" value="80">
+        <output id="limiar-txt">80%</output>
+        <small>Compras com risco acima desse valor são bloqueadas. Mais rigor = menos fraude passando, mas mais cliente bom barrado.</small>
+      </div>
+      <div class="tiles" id="tiles-resultado"></div>
+      <div class="tiles" id="tiles-dinheiro"></div>
+      <div class="grade-2">
+        <div class="card">
+          <h3>Acertos e erros</h3>
+          <div class="matriz" id="matriz"></div>
+        </div>
+        <div class="card grafico">
+          <h3>Curva ROC <small id="auc-txt" style="color:var(--roxo)"></small></h3>
+          <p style="margin:-6px 0 10px;color:var(--muted);font-size:.8rem">Quanto mais a curva sobe rápido (mais fraudes pegas barrando poucos clientes bons), melhor. O ponto vermelho é o rigor escolhido.</p>
+          <svg id="graf-roc" viewBox="0 0 320 240" role="img" aria-label="Curva ROC"></svg>
+          <div class="legenda-graf"><span>← poucos clientes bons barrados</span><span>muitos →</span></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px">
+        <h3>O que a IA aprendeu sozinha</h3>
+        <p style="margin:0 0 14px;color:var(--muted);font-size:.88rem">Peso de cada sinal. <b style="color:var(--vermelho)">Vermelho</b> aumenta o risco, <b style="color:var(--verde)">verde</b> diminui. Ninguém contou isso para ela.</p>
+        <div class="pesos" id="pesos"></div>
+        <div class="nota" id="nota-acuracia"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="simulador">
+    <span class="passo">Passo 4 · Teste você</span>
+    <h2>Monte uma compra e veja o que a IA decide</h2>
+    <p class="intro">Mude os dados e a resposta aparece na hora, com os motivos. É assim que um time de risco entende, e confia, no que o modelo faz.</p>
+    <div class="bloqueado vazio" id="bloco-sim">
+      <div class="aviso-vazio"><i data-e="🔒" data-s="48"></i>Treine a IA primeiro.<button class="btn btn-roxo" data-treinar type="button">▶ Treinar agora</button></div>
+      <div class="simulador">
+        <div class="card">
+          <div class="presets">
+            <button type="button" data-preset="fiel">🙂 Cliente fiel</button>
+            <button type="button" data-preset="estranha">🤔 Meio estranha</button>
+            <button type="button" data-preset="golpe">🚨 Golpe clássico</button>
+          </div>
+          <form id="form-sim" class="campos">
+            <label class="campo"><span>Valor (R$)</span><input name="valor" type="number" min="1" step="0.01" value="189.90"></label>
+            <label class="campo"><span>Categoria</span><select name="categoria"></select></label>
+            <label class="campo"><span>Horário: <b id="hora-txt">14h</b></span><input name="hora" type="range" min="0" max="23" value="14"></label>
+            <label class="campo"><span>Tentativas com o cartão em 24h</span><input name="tentativas" type="number" min="1" max="15" value="1"></label>
+            <label class="campo"><span>Idade da conta (dias)</span><input name="diasConta" type="number" min="0" max="5000" value="420"></label>
+            <label class="campo"><span>Compras anteriores</span><input name="comprasAnteriores" type="number" min="0" max="500" value="12"></label>
+          </form>
+          <div class="toggles">
+            <label class="toggle"><input type="checkbox" form="form-sim" name="paisDiferente">IP de outro país</label>
+            <label class="toggle"><input type="checkbox" form="form-sim" name="emailDescartavel">E-mail descartável</label>
+            <label class="toggle"><input type="checkbox" form="form-sim" name="entregaDiferente">Entrega ≠ cobrança</label>
+            <label class="toggle"><input type="checkbox" form="form-sim" name="dispositivoNovo">Dispositivo nunca visto</label>
+          </div>
+        </div>
+        <div class="card veredito" aria-live="polite">
+          <div class="medidor" id="medidor"><div><b id="risco">0%</b><small>de risco</small></div></div>
+          <span class="decisao aprovar" id="decisao">✔ Aprovar</span>
+          <ul class="motivos" id="motivos"></ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p><b style="color:#fff">Radar de Fraude</b>, projeto de estudo de IA aplicada a pagamentos. Feito por <a href="https://github.com/rico2978bg-hub">Ricardo</a>.</p>
+    <p>Os dados são sintéticos, gerados no seu navegador. Nada é enviado para servidor nenhum. <a href="https://github.com/rico2978bg-hub/radar-fraude">Código no GitHub</a>.</p>
+  </div>
+</footer>
+
+<script type="module">
+import { gerarTransacoes, separar, criarTreino, avaliar, auc, curvaROC, CATEGORIAS } from "./modelo.js";
+
+// Ícones 3D (Fluent Emoji da Microsoft, licença MIT). Sem internet, cai no emoji comum.
+const CDN = "https://cdn.jsdelivr.net/npm/@lobehub/fluent-emoji-3d@1.1.0/assets/";
+const el = (tag, props = {}, ...filhos) => { const e = Object.assign(document.createElement(tag), props); e.append(...filhos); return e; };
+function icone(emoji, tam = 32) {
+  const cps = [...emoji].map(c => c.codePointAt(0).toString(16));
+  const nomes = [...new Set([cps.join("-"), cps.filter(h => h !== "fe0f").join("-")])];
+  const img = el("img", { className: "ic", alt: "", width: tam, height: tam });
+  let i = 0;
+  img.onerror = () => { if (++i < nomes.length) img.src = CDN + nomes[i] + ".webp"; else img.replaceWith(el("span", { className: "ic-txt", textContent: emoji, style: `font-size:${tam * .8}px;width:${tam}px;height:${tam}px` })); };
+  img.src = CDN + nomes[0] + ".webp";
+  return img;
+}
+document.querySelectorAll("i[data-e]").forEach(i => i.replaceWith(icone(i.dataset.e, +i.dataset.s)));
+
+const $ = id => document.getElementById(id);
+const brl = v => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
+const dec = v => v.toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+const pct = (v, casas = 0) => (v * 100).toLocaleString("pt-BR", { maximumFractionDigits: casas, minimumFractionDigits: casas }) + "%";
+const tile = (rotulo, valor, extra = "", cor = "") => el("div", { className: "tile " + cor }, el("small", { textContent: rotulo }), el("b", { textContent: valor }), extra ? el("em", { textContent: extra }) : "");
+
+const EPOCAS = 300;
+let semente = 42, dados, treino, teste, modelo = null, probs = [], treinando = false;
+
+/* ---------- Radar decorativo do topo ---------- */
+for (let i = 0; i < 9; i++) {
+  const a = Math.random() * Math.PI * 2, r = 18 + Math.random() * 30;
+  const p = el("span", { className: "ponto " + (i % 3 ? "ok" : "mal") });
+  Object.assign(p.style, { left: 50 + Math.cos(a) * r + "%", top: 50 + Math.sin(a) * r + "%", animationDelay: (((a / (Math.PI * 2)) + .25) % 1) * 3.2 + "s" });
+  $("radar").append(p);
+}
+
+/* ---------- Passo 1: dados ---------- */
+function sinais(tx) {
+  const s = [];
+  if (tx.tentativas > 1) s.push([`${tx.tentativas} tentativas`, true]);
+  if (tx.diasConta < 7) s.push(["conta nova", true]);
+  if (tx.paisDiferente) s.push(["IP de fora", true]);
+  if (tx.emailDescartavel) s.push(["e-mail descartável", true]);
+  if (tx.hora < 6) s.push(["madrugada", true]);
+  if (tx.dispositivoNovo) s.push(["dispositivo novo", false]);
+  if (tx.entregaDiferente) s.push(["entrega diferente", false]);
+  if (!s.length) s.push([`${tx.comprasAnteriores} compras antes`, false]);
+  return s;
+}
+
+function prepararDados() {
+  dados = gerarTransacoes(10000, semente);
+  ({ treino, teste } = separar(dados));
+  modelo = null;
+  const fraudes = dados.filter(t => t.fraude);
+  $("tiles-dados").replaceChildren(
+    tile("Transações", dados.length.toLocaleString("pt-BR")),
+    tile("Fraudes", fraudes.length.toLocaleString("pt-BR"), pct(fraudes.length / dados.length, 1) + " do total", "vermelho"),
+    tile("Valor médio", brl(dados.reduce((s, t) => s + t.valor, 0) / dados.length)),
+    tile("Prejuízo das fraudes", brl(fraudes.reduce((s, t) => s + t.valor, 0)), "se nada fosse barrado", "ambar"));
+  // Amostra com algumas fraudes misturadas, para dar para ver a diferença
+  const amostra = [...dados.filter(t => !t.fraude).slice(0, 6), ...fraudes.slice(0, 3)].sort((a, b) => a.id - b.id);
+  $("amostra").replaceChildren(...amostra.map(tx => el("tr", {},
+    el("td", { textContent: tx.id }),
+    el("td", { textContent: tx.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) }),
+    el("td", { textContent: tx.categoria }),
+    el("td", { textContent: `${String(tx.hora).padStart(2, "0")}h` }),
+    el("td", {}, ...sinais(tx).map(([t, alerta]) => el("span", { className: "chip" + (alerta ? " alerta" : ""), textContent: t }))),
+    el("td", {}, el("span", { className: "rotulo " + (tx.fraude ? "fraude" : "ok"), textContent: tx.fraude ? "Fraude" : "OK" })))));
+  $("graf-perda").replaceChildren();
+  $("barra-treino").style.width = "0";
+  $("status-treino").textContent = "Ainda não treinada.";
+  $("btn-treinar").textContent = "▶ Treinar";
+  for (const b of ["bloco-resultado", "bloco-sim"]) $(b).classList.add("vazio");
+}
+
+/* ---------- Passo 2: treino animado ---------- */
+const NS = "http://www.w3.org/2000/svg";
+const svg = (tag, attrs) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+
+function desenharPerda(perdas) {
+  const g = $("graf-perda"), W = 600, H = 200, m = 14;
+  const max = perdas[0], min = Math.min(...perdas) * 0.96;
+  const x = i => m + (i / (EPOCAS - 1)) * (W - 2 * m);
+  const y = p => m + ((max - p) / (max - min || 1)) * (H - 2 * m); // erro alto em cima, baixo embaixo
+  const linha = perdas.map((p, i) => `${x(i)},${y(p)}`).join(" ");
+  const defs = svg("defs", {});
+  const grad = svg("linearGradient", { id: "gp", x1: 0, y1: 0, x2: 0, y2: 1 });
+  grad.append(svg("stop", { offset: 0, "stop-color": "#6d5cf5", "stop-opacity": .35 }), svg("stop", { offset: 1, "stop-color": "#6d5cf5", "stop-opacity": 0 }));
+  defs.append(grad);
+  const ultimoX = x(perdas.length - 1);
+  g.replaceChildren(defs,
+    ...[0.25, 0.5, 0.75].map(k => svg("line", { x1: m, x2: W - m, y1: m + k * (H - 2 * m), y2: m + k * (H - 2 * m), stroke: "#eceef6" })),
+    svg("polygon", { points: `${m},${H - m} ${linha} ${ultimoX},${H - m}`, fill: "url(#gp)" }),
+    svg("polyline", { points: linha, fill: "none", stroke: "#6d5cf5", "stroke-width": 3, "stroke-linejoin": "round", "stroke-linecap": "round" }),
+    svg("circle", { cx: ultimoX, cy: y(perdas.at(-1)), r: 5, fill: "#6d5cf5" }));
+}
+
+function treinar() {
+  if (treinando) return;
+  treinando = true;
+  document.querySelectorAll("#btn-treinar, #btn-hero, [data-treinar]").forEach(b => { b.disabled = true; });
+  const tr = criarTreino(treino);
+  const perdas = [];
+  const inicio = performance.now();
+  const rodada = () => {
+    // Segue o relógio: dura ~2 s em qualquer aparelho, mesmo se a tela atualizar devagar.
+    const alvo = Math.min(EPOCAS, Math.max(tr.epoca + 1, Math.ceil((performance.now() - inicio) / 2000 * EPOCAS)));
+    while (tr.epoca < alvo) perdas.push(tr.passo(1));
+    desenharPerda(perdas);
+    $("barra-treino").style.width = (tr.epoca / EPOCAS * 100) + "%";
+    $("status-treino").textContent = `Rodada ${tr.epoca} de ${EPOCAS} · erro ${dec(perdas.at(-1))}`;
+    if (tr.epoca < EPOCAS) return requestAnimationFrame(rodada);
+    modelo = tr.modelo();
+    probs = teste.map(t => modelo.prever(t));
+    treinando = false;
+    document.querySelectorAll("#btn-treinar, #btn-hero, [data-treinar]").forEach(b => { b.disabled = false; });
+    $("btn-treinar").textContent = "↻ Treinar de novo";
+    $("status-treino").textContent = `Pronta! Erro caiu de ${dec(perdas[0])} para ${dec(perdas.at(-1))}.`;
+    for (const b of ["bloco-resultado", "bloco-sim"]) $(b).classList.remove("vazio");
+    mostrarResultado();
+    pesosAprendidos();
+    simular();
+  };
+  requestAnimationFrame(rodada);
+}
+
+/* ---------- Passo 3: resultado ---------- */
+function mostrarResultado() {
+  if (!modelo) return;
+  const limiar = $("limiar").value / 100;
+  $("limiar-txt").textContent = $("limiar").value + "%";
+  const m = avaliar(teste, probs, limiar);
+  const nota = auc(teste, probs);
+  $("tiles-resultado").replaceChildren(
+    tile("Fraudes pegas", pct(m.recall), `${m.vp} de ${m.vp + m.fn} fraudes`, "verde"),
+    tile("Bloqueios certos", pct(m.precisao), `${m.vp} de ${m.vp + m.fp} bloqueios eram fraude`, "roxo"),
+    tile("Clientes bons barrados", pct(m.falsoAlarme, 1), `${m.fp} de ${m.fp + m.vn} compras boas`, "ambar"),
+    tile("Nota geral (AUC)", nota.toLocaleString("pt-BR", { maximumFractionDigits: 2 }), "1 = perfeito · 0,5 = chute"));
+  $("tiles-dinheiro").replaceChildren(
+    tile("💰 Fraude barrada", brl(m.barrado), "dinheiro que não foi roubado", "verde"),
+    tile("🕳️ Fraude que passou", brl(m.escapou), "prejuízo que sobrou", "vermelho"),
+    tile("😕 Vendas boas perdidas", brl(m.bloqueouBom), "clientes que podem desistir", "ambar"),
+    tile("📦 Compras analisadas", teste.length.toLocaleString("pt-BR"), "que a IA nunca tinha visto"));
+  const celula = (n, txt, cls) => el("div", { className: "celula " + cls }, el("b", { textContent: n }), el("span", { textContent: txt }));
+  $("matriz").replaceChildren(
+    el("span"), el("span", { className: "cab", textContent: "IA bloqueou" }), el("span", { className: "cab", textContent: "IA aprovou" }),
+    el("span", { className: "lado", textContent: "Era fraude" }), celula(m.vp, "fraude barrada ✔", "bom"), celula(m.fn, "fraude passou ✘", "ruim"),
+    el("span", { className: "lado", textContent: "Era compra boa" }), celula(m.fp, "cliente barrado ✘", "meh"), celula(m.vn, "aprovada ✔", "bom"));
+  $("auc-txt").textContent = "· AUC " + nota.toLocaleString("pt-BR", { maximumFractionDigits: 3 });
+  desenharROC(m);
+  const nunca = avaliar(teste, teste.map(() => 0), 0.5);
+  $("nota-acuracia").replaceChildren(el("b", { textContent: "💡 Por que não olhar só a \"acurácia\"?" }),
+    `Uma IA preguiçosa que aprova tudo acertaria ${pct(nunca.acuracia, 1)} das compras, sem pegar nenhuma fraude. ` +
+    `Com este rigor, a nossa acerta ${pct(m.acuracia, 1)} e pega ${pct(m.recall)} das fraudes. Em fraude, o que importa é o equilíbrio entre fraude pega e cliente incomodado.`);
+  simular();
+}
+
+function desenharROC(atual) {
+  const g = $("graf-roc"), W = 320, H = 240, m = 22;
+  const x = v => m + v * (W - 2 * m), y = v => H - m - v * (H - 2 * m);
+  const curva = curvaROC(teste, probs, 80);
+  const pts = curva.map(p => `${x(p.x)},${y(p.y)}`).join(" ");
+  g.replaceChildren(
+    svg("rect", { x: m, y: m, width: W - 2 * m, height: H - 2 * m, fill: "#fafbff", stroke: "#eceef6", rx: 8 }),
+    svg("line", { x1: x(0), y1: y(0), x2: x(1), y2: y(1), stroke: "#c9cde0", "stroke-dasharray": "5 5" }),
+    svg("polygon", { points: `${x(0)},${y(0)} ${pts} ${x(1)},${y(0)}`, fill: "#6d5cf51a" }),
+    svg("polyline", { points: pts, fill: "none", stroke: "#6d5cf5", "stroke-width": 3, "stroke-linejoin": "round" }),
+    svg("circle", { cx: x(atual.falsoAlarme), cy: y(atual.recall), r: 7, fill: "#e11d48", stroke: "#fff", "stroke-width": 3 }));
+  const t = svg("text", { x: x(1) - 4, y: y(0.06), "text-anchor": "end", "font-size": 11, fill: "#9aa0b8" });
+  t.textContent = "linha tracejada = chute";
+  g.append(t);
+}
+
+function pesosAprendidos() {
+  const lista = modelo.importancia();
+  const max = Math.max(...lista.map(p => Math.abs(p.peso)));
+  $("pesos").replaceChildren(...lista.map(p => {
+    const barra = el("span", { className: p.peso >= 0 ? "mais" : "menos" });
+    barra.style.width = (Math.abs(p.peso) / max * 50) + "%";
+    return el("div", { className: "peso" }, el("span", { textContent: p.nome }), el("div", { className: "eixo" }, barra));
+  }));
+}
+
+/* ---------- Passo 4: simulador ---------- */
+const form = $("form-sim");
+form.categoria.append(...CATEGORIAS.map(c => new Option(c, c)));
+const PRESETS = {
+  fiel: { valor: 189.9, categoria: "Moda", hora: 14, tentativas: 1, diasConta: 900, comprasAnteriores: 25, paisDiferente: false, emailDescartavel: false, entregaDiferente: false, dispositivoNovo: false },
+  estranha: { valor: 1450, categoria: "Eletrônicos", hora: 23, tentativas: 2, diasConta: 40, comprasAnteriores: 1, paisDiferente: false, emailDescartavel: false, entregaDiferente: true, dispositivoNovo: true },
+  golpe: { valor: 500, categoria: "Gift card", hora: 3, tentativas: 6, diasConta: 1, comprasAnteriores: 0, paisDiferente: true, emailDescartavel: true, entregaDiferente: true, dispositivoNovo: true },
+};
+function aplicarPreset(p) {
+  for (const [k, v] of Object.entries(p)) { const campo = form.elements[k]; if (campo.type === "checkbox") campo.checked = v; else campo.value = v; }
+  simular();
+}
+
+function lerCompra() {
+  const f = form.elements, num = (n, min, max) => Math.min(max, Math.max(min, Number(f[n].value) || 0));
+  return {
+    valor: num("valor", 1, 1e6), categoria: f.categoria.value, hora: num("hora", 0, 23), tentativas: Math.round(num("tentativas", 1, 15)),
+    diasConta: Math.round(num("diasConta", 0, 5000)), comprasAnteriores: Math.round(num("comprasAnteriores", 0, 500)),
+    paisDiferente: f.paisDiferente.checked, emailDescartavel: f.emailDescartavel.checked, entregaDiferente: f.entregaDiferente.checked, dispositivoNovo: f.dispositivoNovo.checked,
+  };
+}
+
+// Motivo em linguagem simples, descrevendo o valor real desta compra.
+function descrever(nome, tx) {
+  const s = (n, um, varios) => `${n} ${n === 1 ? um : varios}`;
+  const textos = {
+    "Valor da compra": () => `Valor de ${tx.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}`,
+    "Compra de madrugada (0h–6h)": () => (tx.hora < 6 ? `Compra de madrugada (${tx.hora}h)` : `Compra em horário comum (${tx.hora}h)`),
+    "Conta criada há menos de 7 dias": () => (tx.diasConta < 7 ? `Conta criada há ${s(tx.diasConta, "dia", "dias")}` : "Conta não é recém-criada"),
+    "Idade da conta": () => `Conta com ${s(tx.diasConta, "dia", "dias")}`,
+    "Tentativas com o cartão em 24h": () => `${s(tx.tentativas, "tentativa", "tentativas")} com o cartão em 24h`,
+    "IP de outro país": () => (tx.paisDiferente ? "IP de outro país" : "IP do mesmo país do cartão"),
+    "E-mail descartável": () => (tx.emailDescartavel ? "E-mail descartável" : "E-mail comum"),
+    "Entrega diferente da cobrança": () => (tx.entregaDiferente ? "Entrega longe do endereço de cobrança" : "Entrega no endereço de cobrança"),
+    "Dispositivo nunca visto": () => (tx.dispositivoNovo ? "Dispositivo nunca visto antes" : "Dispositivo já conhecido"),
+    "Compras anteriores": () => `${s(tx.comprasAnteriores, "compra anterior", "compras anteriores")}`,
+  };
+  if (textos[nome]) return textos[nome]();
+  const cat = nome.replace("Categoria: ", "");
+  return tx.categoria === cat ? `Categoria ${cat}` : `Não é ${cat}`;
+}
+
+function simular() {
+  $("hora-txt").textContent = form.elements.hora.value + "h";
+  if (!modelo) return;
+  const tx = lerCompra();
+  const p = modelo.prever(tx), limiar = $("limiar").value / 100;
+  const [cls, txt, cor] = p >= limiar ? ["bloquear", "⛔ Bloquear", "#e11d48"] : p >= limiar * 0.5 ? ["revisar", "🔎 Mandar para revisão", "#d97706"] : ["aprovar", "✔ Aprovar", "#16a34a"];
+  $("risco").textContent = Math.round(p * 100) + "%";
+  $("risco").style.color = cor;
+  $("medidor").style.background = `conic-gradient(${cor} 0 ${p * 360}deg, #eceef6 0)`;
+  $("decisao").className = "decisao " + cls;
+  $("decisao").textContent = txt;
+  const motivos = modelo.explicar(tx).filter(e => Math.abs(e.efeito) > 0.08).slice(0, 5);
+  $("motivos").replaceChildren(...(motivos.length ? motivos.map(e => el("li", {},
+    el("span", { className: "seta " + (e.efeito > 0 ? "sobe" : "desce"), textContent: e.efeito > 0 ? "▲" : "▼" }),
+    el("span", { textContent: descrever(e.nome, tx) }),
+    el("small", { textContent: e.efeito > 0 ? "aumentou o risco" : "diminuiu o risco" }))) : [el("li", {}, "", "Nada fora do comum nesta compra.", "")]));
+}
+
+form.addEventListener("input", simular);
+form.addEventListener("change", simular);
+document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => aplicarPreset(PRESETS[b.dataset.preset])));
+$("limiar").addEventListener("input", mostrarResultado);
+$("btn-treinar").addEventListener("click", treinar);
+document.querySelectorAll("[data-treinar]").forEach(b => b.addEventListener("click", treinar));
+$("btn-hero").addEventListener("click", () => { $("treino").scrollIntoView(); treinar(); });
+$("btn-dados").addEventListener("click", () => { semente = Math.floor(Math.random() * 1e9); prepararDados(); });
+
+prepararDados();
+aplicarPreset(PRESETS.fiel);
+</script>
+</body>
+</html>
